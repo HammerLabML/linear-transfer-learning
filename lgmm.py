@@ -146,15 +146,14 @@ class SLGMM(BaseEstimator, ClassifierMixin):
                 Delta = X[R[k, :], :] - np.expand_dims(self._Mus[:, k], axis=0)
                 Dsq[k, R[k, :]] = np.sum(Delta * np.dot(Delta, self._Lambda), axis=1)
 
-            # subtract the minimum distance from all distances
-            Dsq_normalized = Dsq - np.expand_dims(np.min(Dsq, axis=1), axis=1)
-
             # compute the Gamma matrix from the squared distances
             # iterate over all components
             Gamma = np.zeros((K, M))
             for k in range(K):
+                # get the minimum for this component for numeric reasons
+                dsq_min = np.min(Dsq[k, R[k, :]])
                 # compute the non-normalized gamma values
-                ks  = np.exp(-0.5 * Dsq_normalized[k, R[k, :]])
+                ks  = np.exp(-0.5 * (Dsq[k, R[k, :]] - dsq_min))
                 pys = self._P_Y[y2[R[k, :]], k]
                 Gamma[k, R[k, :]] =  ks * pys * self._Pi[k]
             # normalize to obtain the posterior p(k|x, y)
@@ -212,6 +211,7 @@ class SLGMM(BaseEstimator, ClassifierMixin):
             self._Lambda = np.dot(V, np.dot(np.diag(1. / Eigs), V.T))
         # after all iterations are over, return
         return self
+
 
     def predict_proba(self, X):
         """ Predicts class probabilities for all input data.
