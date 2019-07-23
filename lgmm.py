@@ -77,14 +77,14 @@ class SLGMM(BaseEstimator, ClassifierMixin):
 
         Returns: This instance.
         """
-        m = X.shape[0]
+        M = X.shape[0]
         # set the dimensionality
         self._dim = X.shape[1]
         # retrieve the unique labels
         self._labels = np.sort(np.unique(y))
         L = len(self._labels)
         # translate label vector into standard format
-        y2 = np.zeros((m), dtype=int)
+        y2 = np.zeros((M), dtype=int)
         for l in range(L):
             y2[y == self._labels[l]] = l
 
@@ -110,7 +110,7 @@ class SLGMM(BaseEstimator, ClassifierMixin):
 
         # initialize the means in the convex hull of the data, but take
         # class distributions into account
-        Gamma = np.random.rand(K, m)
+        Gamma = np.random.rand(K, M)
         for l in range(L):
             Gamma[:, y2 == l] *= np.expand_dims(self._P_Y[l, :], 1)
         # normalize row-wise
@@ -131,14 +131,14 @@ class SLGMM(BaseEstimator, ClassifierMixin):
 
             # as preparation, compute which data point is a-priori
             # relevant for which Gaussian component due to class distributions
-            R = np.full((K, m), False, dtype=bool)
+            R = np.full((K, M), False, dtype=bool)
             for k in range(K):
                 for l in np.where(self._P_Y[:, k] > 1E-5)[0]:
                     R[k, y2 == l] = True
 
             # compute the squared distances between Gaussian means
             # and data
-            Dsq = np.full((K, m), np.inf)
+            Dsq = np.full((K, M), np.inf)
             # iterate over all components
             for k in range(K):
                 # compute the squared distances between mean and data
@@ -151,7 +151,7 @@ class SLGMM(BaseEstimator, ClassifierMixin):
 
             # compute the Gamma matrix from the squared distances
             # iterate over all components
-            Gamma = np.zeros((K, m))
+            Gamma = np.zeros((K, M))
             for k in range(K):
                 # compute the non-normalized gamma values
                 ks  = np.exp(-0.5 * Dsq_normalized[k, R[k, :]])
@@ -165,7 +165,7 @@ class SLGMM(BaseEstimator, ClassifierMixin):
             # maximization step) minus the entropy of gamma for all i
             valid  = np.logical_and(Gamma > 1E-5, np.logical_not(np.isnan(Gamma)))
             sqloss = 0.5 * np.sum(Gamma[valid] * Dsq[valid])
-            lambdaloss = - 0.5 * m * np.log(np.linalg.det(self._Lambda)) + 0.5 * m * self._dim * np.log(2 * np.pi)
+            lambdaloss = - 0.5 * M * np.log(np.linalg.det(self._Lambda)) + 0.5 * M * self._dim * np.log(2 * np.pi)
             piloss = - np.sum(np.dot(np.log(self._Pi), Gamma))
             pyloss = 0.
             for k in range(K):
@@ -198,8 +198,8 @@ class SLGMM(BaseEstimator, ClassifierMixin):
                 # compute the covariance for the current component, weighted
                 # by Gamma
                 Sigma += np.dot((Delta * np.expand_dims(Gamma[k, R[k, :]], axis=1)).T, Delta)
-            # normalize Sigma by m
-            Sigma /= m
+            # normalize Sigma by M
+            Sigma /= M
             # perform an eigenvalue decomposition of Sigma to ensure that
             # the covariance in no direction degenerates
             Eigs, V = np.linalg.eig(Sigma)
@@ -213,3 +213,51 @@ class SLGMM(BaseEstimator, ClassifierMixin):
         # after all iterations are over, return
         return self
 
+    def predict_proba(self, X):
+        """ Predicts class probabilities for all input data.
+
+        Args:
+        X: A n_samples, n_features matrix of data.
+
+        Returns: a n_samples x n_classes matrix of class probabilities.
+        """
+        M = X.shape[0]
+        K = self._Mus.shape[1]
+        # compute the squared distances between Gaussian means
+        # and data
+        Dsq = np.full((K, M), np.inf)
+        # iterate over all components
+        for k in range(K):
+            Delta = X - np.expand_dims(self._Mus[:, k], axis=0)
+            Dsq[k, :] = np.sum(Delta * np.dot(Delta, self._Lambda), axis=1)
+
+        # subtract the minimum distance from all distances
+        Dsq_normalized = Dsq - np.expand_dims(np.min(Dsq, axis=1), axis=1)
+
+        # compute the assignment factors from all Gaussian components to
+        # all data points; these are essentially the probabilities
+        # p(x, k) for all x and k, ignoring the label
+        Gamma = np.exp(-0.5 * Dsq_normalized) * np.expand_dims(self._Pi, 1)
+
+        # By multiplying with P(y|k) we obtain p(x, y) for all x and y
+        P = np.dot(self._P_Y, Gamma)
+        # In a last step, we just need to transpose and normalize over the
+        # classes to obtain the desired class probabilities
+        P = P.T / np.expand_dims(np.sum(P.T, axis=1), 1)
+        # return
+        return P
+
+
+    def predict(self, X):
+        """ Predicts class labels for all input data.
+
+        Args:
+        X: A n_samples, n_features matrix of data.
+
+        Returns: a n_samples vector of predicted class labels
+        """
+        P = self.predict_proba(X)
+        # get the most likely label index for each point
+        ls = np.argmax(P, axis=1)
+        # return the label for each index
+        return self._labels[ls]
