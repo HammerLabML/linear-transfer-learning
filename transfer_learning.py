@@ -136,7 +136,7 @@ class SLGMM_transfer_model(BaseEstimator):
         # after all iterations are over, return
         return self
 
-    def predict(X):
+    def predict(self, X):
         """ Applies the learned linear transformation to the input data.
 
         Args:
