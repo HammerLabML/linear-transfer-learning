@@ -4,6 +4,7 @@ from sklearn_lvq.glvq import GlvqModel
 from sklearn_lvq.grlvq import GrlvqModel
 from sklearn_lvq.gmlvq import GmlvqModel
 from sklearn_lvq.grmlvq import GrmlvqModel
+from sklearn_lvq.lgmlvq import LgmlvqModel
 import lgmm
 import transfer_learning
 
@@ -95,6 +96,68 @@ class TestTransferLearning(unittest.TestCase):
         tl_model.fit(Xtar[ytar < 0.5, :], ytar[ytar < 0.5])
         # assert high accuracy on target data
         self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+
+
+    def test_lgmm_transfer_learning(self):
+        # generate a two-dimensional data with two classes, where one class is
+        # stretched along the x axis and one along the y axis
+        X = np.random.randn(200, 2)
+        y = np.concatenate([np.ones((100)) * -1, np.ones((100))])
+        X[y < 0, :] *= np.array([[0.5, 0.2]])
+        X[y > 0, :] *= np.array([[0.2, 0.5]])
+        X[:, 0] += y
+
+        # initialize a lgmm
+        model = lgmm.LGMM(K = '1 per class')
+        # train it
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+
+        # now, generate target space data which is rotated by 180°
+        Xtar = X * np.array([[-1., -1.]])
+        ytar = y
+        # assert low accuracy
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+
+        # perform transfer learning
+        tl_model = transfer_learning.LGMM_transfer_model(model)
+        tl_model.fit(Xtar, ytar)
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+        # check the transfer matrix
+        np.testing.assert_allclose(tl_model._H, np.array([[-1., 0.], [0., 0.]]), atol=0.5)
+
+
+    def test_lgmlvq_transfer_learning(self):
+        # generate a two-dimensional data with two classes, where one class is
+        # stretched along the x axis and one along the y axis
+        X = np.random.randn(200, 2)
+        y = np.concatenate([np.ones((100)) * -1, np.ones((100))])
+        X[y < 0, :] *= np.array([[0.5, 0.2]])
+        X[y > 0, :] *= np.array([[0.2, 0.5]])
+        X[:, 0] += y
+
+        # train an LGMLVQ model on it
+        model = LgmlvqModel()
+        # train it
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+
+        # now, generate target space data which is rotated by 180°
+        Xtar = X * np.array([[-1., -1.]])
+        ytar = y
+        # assert low accuracy
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+
+        # perform transfer learning
+        tl_model = transfer_learning.Local_LVQ_transfer_model(model)
+        tl_model.fit(Xtar, ytar)
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+        # check the transfer matrix
+        np.testing.assert_allclose(tl_model._H, np.array([[-1., 0.], [0., 0.]]), atol=0.5)
 
 if __name__ == '__main__':
     unittest.main()
