@@ -261,3 +261,57 @@ class SLGMM(BaseEstimator, ClassifierMixin):
         ls = np.argmax(P, axis=1)
         # return the label for each index
         return self._labels[ls]
+
+def from_lvq(lvq_model, sigma = 1.):
+    """ Converts a (GM)LVQ model to a compatible SLGMM.
+
+    The input LVQ model is converted to an SLGMM by generating one Gaussian
+    component per prototype with mean = prototype position and a crisp
+    class distribution with probability one for the prototype's class and
+    zero everywhere else. The metric learning matrix omega is converted to
+    a precision matrix via omega.T * omega.
+
+    Args:
+    lvq_model:  The input LVQ model. We assume that this model has the
+                attributes w_ containing the prototypes, c_w_ containing
+                the prototype labels, and, optionally, omega_ for the
+                projection matrix and lambda_ for relevances.
+                Please refer to the documentation at
+                https://mrnuggelz.github.io/sklearn-lvq/
+                for more information.
+    sigma:      A scaling parameter for the precision matrix. A smaller
+                sigma means that the classification behavior of the converted
+                SLGMM becomes more crisp and thus more similar to the original
+                LVQ behavior. For transfer learning purposes, this parameter
+                is irrelevant, though, and is, thus, set to 1 per default.
+    """
+    # set up an 'empty' slgmm
+    model = SLGMM(K = lvq_model.w_.shape[0])
+    # set up the Gaussian means
+    model._dim = lvq_model.w_.shape[1]
+    model._Mus = lvq_model.w_.T
+    # set up the Lambda matrix
+    if(not hasattr(lvq_model, 'omega_')):
+        if(not hasattr(lvq_model, 'lambda_')):
+            model._Lambda = np.eye(model._dim)
+        else:
+            model._Lambda = np.diag(lvq_model.lambda_ ** 2)
+    else:
+        if(not hasattr(lvq_model, 'lambda_')):
+            model._Lambda = np.dot(lvq_model.omega_.T, lvq_model.omega_)
+        else:
+            omega_lambda  = np.dot(lvq_model.omega_, np.diag(lvq_model.lambda_))
+            model._Lambda = np.dot(omega_lambda.T, omega_lambda)
+    # scale lambda with sigma
+    model._Lambda /= sigma ** 2
+    # set up priors
+    model._Pi = np.ones(model.K) / model.K
+    # set up class distributions
+    model._labels = np.sort(np.unique(lvq_model.c_w_))
+    L = len(model._labels)
+    model._P_Y = np.zeros((L, model.K))
+    for l in range(L):
+        model._P_Y[l, lvq_model.c_w_ == model._labels[l]] = 1.
+    # return the model
+    return model
+

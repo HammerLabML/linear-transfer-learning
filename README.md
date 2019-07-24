@@ -40,14 +40,15 @@ For a quick start we recommend to take a look at the demo in the notebook
 on example data. For the actual transfer learning, we recommend to initialize
 one of the following models, depending on your source space model:
 
-1. `transfer-learning.LGMM_transfer_model` : If you have a full labelled Gaussian
-  mixture model.
+1. `transfer-learning.LGMM_transfer_model` : If you have a full labelled
+   Gaussian mixture model.
 2. `transfer-learning.SLGMM_transfer_model` : If you have a labelled Gaussian
-  mixture model with shared precision matrices.
-3. `transfer-learning.Local_LVQ_model` : If you have a learning vector
-  quantization model with individual metric learning matrices.
-4. `transfer-learning.LVQ_model` : If you have a learning vector quantization
-  model with shared metric learning matrix or no metric learning at all.
+   mixture model with shared precision matrices.
+3. `transfer-learning.Local_LVQ_transfer_model` : If you have a learning vector
+   quantization model with individual metric learning matrices.
+4. `transfer-learning.LVQ_transfer_model` : If you have a learning vector
+   quantization model with shared metric learning matrix or no metric learning
+   at all.
 
 Note that models 2 and 4 are _much_ faster to train compared to models 1 and 3
 (refer to the next section for more information on that).
@@ -63,7 +64,7 @@ The basic idea of our transfer learning approach is to maximize the likelihood
 of target space data according to the source space data distribution _after_ the
 learned transfer function $`h`$ has been applied. More precisely, assume we have
 a data set $`(\vec x_1, y_1), \ldots, (\vec x_m, y_m)`$ of target data points
-$\vec x_j \in \mathbb{R}^n$ and their labels $y_j \in \{1, \ldots, L\}$.
+$`\vec x_j \in \mathbb{R}^n`$ and their labels $`y_j \in \{1, \ldots, L\}`$.
 Then, we wish to maximize the joint probability
 
 ```math
@@ -156,8 +157,10 @@ This library contains the following files.
 * `LICENSE` : A copy of the GPLv3 license.
 * `lgmm.py` : A file to train labelled Gaussian mixture models with or without
   shared precision matrices.
+* `lgmm_test.py` : A set of unit tests for `lgmm.py`.
 * `README.md` : This file.
-* `transfer-learning.py` : The actual transfer learning models.
+* `transfer_learning.py` : The actual transfer learning models.
+* `transfer_learning_test.py` : A set of unit tests for `transfer_learning.py`.
 
 ## Licensing
 

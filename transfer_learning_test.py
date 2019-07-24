@@ -1,5 +1,9 @@
 import unittest
 import numpy as np
+from sklearn_lvq.glvq import GlvqModel
+from sklearn_lvq.grlvq import GrlvqModel
+from sklearn_lvq.gmlvq import GmlvqModel
+from sklearn_lvq.grmlvq import GrmlvqModel
 import lgmm
 import transfer_learning
 
@@ -27,6 +31,70 @@ class TestTransferLearning(unittest.TestCase):
 
         # check that the correct transformation was found
         np.testing.assert_allclose(tl_model._H, np.array([[-1.]]), atol=0.5)
+
+    def test_lvq_transfer_learning(self):
+        # generate a simple, two-dimensional dataset generated using three
+        # Gaussians
+        X = np.random.randn(300, 2) * 0.2
+        y = np.concatenate([np.ones((100)) * -1, np.zeros((100)), np.ones((100))])
+        X[:, 0] += y
+
+        # then create target data with only two classes and swapped locations
+        Xtar = np.random.randn(30, 2) * 0.2
+        ytar = np.concatenate([np.ones((10)), np.zeros((10)), np.ones((10)) * -1])
+        Xtar[:, 0] -= ytar
+
+        # train a GLVQ model on the source data
+        model = GlvqModel()
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+        # assert low accuracy on target data
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+        # perform transfer learning, using only two classes
+        tl_model = transfer_learning.LVQ_transfer_model(model)
+        tl_model.fit(Xtar[ytar < 0.5, :], ytar[ytar < 0.5])
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+
+        # train a GRLVQ model on the source data
+        model = GrlvqModel()
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+        # assert low accuracy on target data
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+        # perform transfer learning, using only two classes
+        tl_model = transfer_learning.LVQ_transfer_model(model)
+        tl_model.fit(Xtar[ytar < 0.5, :], ytar[ytar < 0.5])
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+
+        # train a GMLVQ model on the source data
+        model = GmlvqModel()
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+        # assert low accuracy on target data
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+        # perform transfer learning, using only two classes
+        tl_model = transfer_learning.LVQ_transfer_model(model)
+        tl_model.fit(Xtar[ytar < 0.5, :], ytar[ytar < 0.5])
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
+
+        # train a GRMLVQ model on the source data
+        model = GrmlvqModel()
+        model.fit(X, y)
+        # assert high accuracy
+        self.assertTrue(model.score(X, y) > 0.9)
+        # assert low accuracy on target data
+        self.assertTrue(model.score(Xtar, ytar) < 0.5)
+        # perform transfer learning, using only two classes
+        tl_model = transfer_learning.LVQ_transfer_model(model)
+        tl_model.fit(Xtar[ytar < 0.5, :], ytar[ytar < 0.5])
+        # assert high accuracy on target data
+        self.assertTrue(model.score(tl_model.predict(Xtar), ytar) > 0.9)
 
 if __name__ == '__main__':
     unittest.main()

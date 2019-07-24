@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from sklearn.base import BaseEstimator
+import lgmm
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2019, Benjamin Paaßen'
@@ -40,7 +41,10 @@ class SLGMM_transfer_model(BaseEstimator):
 
     Attributes:
     model:      A labelled Gaussian mixture model with shared precision
-                matrix (slGMM) for the source space.
+                matrix (slGMM) for the source space. The required attributes
+                of such a model are _Mu, _Lambda, _P_Y, _Pi, and _labels.
+                Refer to the documentation of the SGLMM class in lgmm.py for
+                more information on these attributes.
     regul:      The L2 regularization strength. 1E-5 per default.
     error_delta: A stopping criterion based on the error. If the error
                 improves by less than this, the algorithm terminates.
@@ -145,3 +149,39 @@ class SLGMM_transfer_model(BaseEstimator):
         Returns: X * H.T
         """
         return np.dot(X, self._H.T)
+
+class LVQ_transfer_model(SLGMM_transfer_model):
+    """ Serves as a (GM)LVQ compatible wrapper of a SLGMM_transfer_model.
+
+    The input LVQ model is converted to an SLGMM by generating one Gaussian
+    component per prototype with mean = prototype position and a crisp
+    class distribution with probability one for the prototype's class and
+    zero everywhere else. The metric learning matrix omega is converted to
+    a precision matrix via omega.T * omega.
+
+    Attributes:
+    lvq_model:  The input LVQ model. We assume that this model has the
+                attributes w_ containing the prototypes, c_w_ containing
+                the prototype labels, and, optionally, omega_ for the
+                projection matrix or lambda_ for relevances.
+                Please refer to the documentation at
+                https://mrnuggelz.github.io/sklearn-lvq/
+                for more information.
+    model:      The generated SLGMM model for the input LVQ model.
+    regul:      The L2 regularization strength. 1E-5 per default.
+    error_delta: A stopping criterion based on the error. If the error
+                improves by less than this, the algorithm terminates.
+                1E-5 per default.
+    max_it:     The maximum number of iterations for the expectation
+                maximization scheme. 50 per default.
+    _H:         The transfer matrix H, mapping from the target to the
+                souce space
+    _loss:      The error curve during the last training run. Each entry is the
+                negative log likelihood after an expectation step.
+    """
+    def __init__(self, lvq_model, regul = 1E-5, error_delta = 1E-5, max_it = 50):
+        super(LVQ_transfer_model, self).__init__(lgmm.from_lvq(lvq_model), regul, error_delta, max_it)
+        self.lvq_model = lvq_model
+
+
+
