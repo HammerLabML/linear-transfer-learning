@@ -5,6 +5,7 @@ from sklearn_lvq.glvq import GlvqModel
 from sklearn_lvq.grlvq import GrlvqModel
 from sklearn_lvq.gmlvq import GmlvqModel
 from sklearn_lvq.grmlvq import GrmlvqModel
+from sklearn_lvq.lgmlvq import LgmlvqModel
 import lgmm
 
 class TestLGMM(unittest.TestCase):
@@ -243,6 +244,26 @@ class TestLGMM(unittest.TestCase):
         y_pred = model.predict(X)
         # check that the results are right
         np.testing.assert_array_equal(y_pred, y)
+
+
+    def test_lgmm_from_lvq(self):
+        # generate a simple, two-dimensional dataset generated using two
+        # Gaussians
+        X = np.random.randn(200, 2) * 0.2
+        y = np.concatenate([np.ones((100)) * -1, np.ones((100))])
+        X[:, 0] += y
+
+        # train an LGMLVQ model on it
+        model = LgmlvqModel()
+        model.fit(X, y)
+        # assess the accuracy
+        acc = model.score(X, y)
+        self.assertTrue(acc > 0.9)
+        # generate a lgmm from it
+        slgmm = lgmm.lgmm_from_lvq(model, sigma = 0.01)
+        # check the accuracy
+        acc_slgmm = model.score(X, y)
+        np.testing.assert_allclose(acc_slgmm, acc, atol=0.01)
 
 if __name__ == '__main__':
     unittest.main()

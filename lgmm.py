@@ -336,8 +336,9 @@ class LGMM(BaseEstimator, ClassifierMixin):
                 components as columns. Initialized randomly in the data span.
     _Lambdas:   A _dim x _dim x K tensor containing the precision matrices.
                 Initialized as the identity for all components.
-    _dets:      A K-dimensional vector containing the determinants for all
-                precision matrices.
+    _sqrtdets:  A K-dimensional vector containing the square-rooted determinants
+                for all precision matrices. These are normalized by the smallest
+                determinant to prevent numeric degeneration.
     _Pi:        A K-dimensional vector containing the prior for all components.
                 Initialized as 1 / K for all components.
     _labels:    An L-dimensional vector containing labels for each label index.
@@ -410,7 +411,7 @@ class LGMM(BaseEstimator, ClassifierMixin):
             self._Lambdas[:, :, k] = np.eye(self._dim)
         # as a helper construct, we also need the determinant of each
         # precision matrix, which is one initially
-        self._dets = np.ones(K)
+        self._sqrtdets = np.ones(K)
 
         # initialize the prior uniformly
         self._Pi = np.ones(K) / K
@@ -440,11 +441,12 @@ class LGMM(BaseEstimator, ClassifierMixin):
             # compute the Gamma matrix from the squared distances
             # iterate over all components
             Gamma = np.zeros((K, M))
+            min_sqrtdet = np.min(self._sqrtdets)
             for k in range(K):
                 # get the minimum for this component for numeric reasons
                 dsq_min = np.min(Dsq[k, R[k, :]])
                 # compute the non-normalized gamma values
-                ks  = np.sqrt(self._dets[k]) * np.exp(-0.5 * (Dsq[k, R[k, :]] - dsq_min))
+                ks  = (self._sqrtdets[k] / min_sqrtdet) * np.exp(-0.5 * (Dsq[k, R[k, :]] - dsq_min)) 
                 pys = self._P_Y[y2[R[k, :]], k]
                 Gamma[k, R[k, :]] =  ks * pys * self._Pi[k]
             # normalize to obtain the posterior p(k|x, y)
@@ -455,7 +457,7 @@ class LGMM(BaseEstimator, ClassifierMixin):
             # maximization step) minus the entropy of gamma for all i
             valid  = np.logical_and(Gamma > 1E-5, np.logical_not(np.isnan(Gamma)))
             sqloss = 0.5 * np.sum(Gamma[valid] * Dsq[valid])
-            lambdaloss = - 0.5 * np.sum( np.dot( Gamma.T, np.log(self._dets))) + 0.5 * M * self._dim * np.log(2 * np.pi)
+            lambdaloss = - np.sum( np.dot( Gamma.T, np.log(self._sqrtdets))) + 0.5 * M * self._dim * np.log(2 * np.pi)
             piloss = - np.sum(np.dot(np.log(self._Pi), Gamma))
             pyloss = 0.
             for k in range(K):
@@ -497,8 +499,8 @@ class LGMM(BaseEstimator, ClassifierMixin):
                 Eigs[Eigs < self.min_sigma ** 2] = self.min_sigma ** 2
                 # then construct the precision matrix via inversion
                 self._Lambdas[:, :, k] = np.dot(V, np.dot(np.diag(1. / Eigs), V.T))
-                # and recompute the determinant
-                self._dets[k] = np.prod(1. / Eigs)
+                # and recompute the square-rooted determinants
+                self._sqrtdets[k] = np.sqrt(np.prod(1. / Eigs))
         # after all iterations are over, return
         return self
 
@@ -527,7 +529,7 @@ class LGMM(BaseEstimator, ClassifierMixin):
         # compute the assignment factors from all Gaussian components to
         # all data points; these are essentially the probabilities
         # p(x, k) for all x and k, ignoring the label
-        Gamma = np.exp(-0.5 * Dsq_normalized) * np.expand_dims(self._Pi, 1) * np.expand_dims(np.sqrt(self._dets), 1)
+        Gamma = np.exp(-0.5 * Dsq_normalized) * np.expand_dims(self._Pi, 1) * np.expand_dims(self._sqrtdets / np.min(self._sqrtdets), 1)
 
         # By multiplying with P(y|k) we obtain p(x, y) for all x and y
         P = np.dot(self._P_Y, Gamma)
@@ -551,3 +553,55 @@ class LGMM(BaseEstimator, ClassifierMixin):
         ls = np.argmax(P, axis=1)
         # return the label for each index
         return self._labels[ls]
+
+
+def lgmm_from_lvq(lvq_model, sigma = 1., min_rel = 1E-3):
+    """ Converts an LGMLVQ model to a compatible LGMM.
+
+    The input LVQ model is converted to an LGMM by generating one Gaussian
+    component per prototype with mean = prototype position and a crisp
+    class distribution with probability one for the prototype's class and
+    zero everywhere else. The metric learning matrices omega are converted to
+    precision matrices via omega.T * omega.
+
+    Args:
+    lvq_model:  The input LVQ model. We assume that this model has the
+                attributes w_ containing the prototypes, c_w_ containing
+                the prototype labels, and omegas_ for the
+                projection matrices.
+                Please refer to the documentation at
+                https://mrnuggelz.github.io/sklearn-lvq/
+                for more information.
+    sigma:      A scaling parameter for the precision matrix. A smaller
+                sigma means that the classification behavior of the converted
+                LGMM becomes more crisp and thus more similar to the original
+                LVQ behavior. For transfer learning purposes, this parameter
+                is irrelevant, though, and is, thus, set to 1 per default.
+    min_rel:    The minimum relevance in each dimension to prevent a
+                degeneration of the determinant of a precision matrix.
+                1E-3 per default.
+    """
+    # set up an 'empty' lgmm
+    model = LGMM(K = lvq_model.w_.shape[0])
+    # set up the Gaussian means
+    model._dim = lvq_model.w_.shape[1]
+    model._Mus = lvq_model.w_.T
+    # set up the Lambda matrices
+    model._Lambdas = np.zeros((model._dim, model._dim, model.K))
+    model._sqrtdets = np.zeros(model.K)
+    for k in range(model.K):
+        model._Lambdas[:, :, k] = np.dot(lvq_model.omegas_[k].T, lvq_model.omegas_[k]) / sigma ** 2
+        # to compute the determinant, we first retrieve the eigenvalues
+        eigs = np.real(np.linalg.eigvals(model._Lambdas[:, :, k]))
+        eigs[eigs < min_rel] = min_rel
+        model._sqrtdets[k] = np.sqrt(np.prod(eigs))
+    # set up priors
+    model._Pi = np.ones(model.K) / model.K
+    # set up class distributions
+    model._labels = np.sort(np.unique(lvq_model.c_w_))
+    L = len(model._labels)
+    model._P_Y = np.zeros((L, model.K))
+    for l in range(L):
+        model._P_Y[l, lvq_model.c_w_ == model._labels[l]] = 1.
+    # return the model
+    return model
