@@ -180,7 +180,7 @@ class LVQ_transfer_model(SLGMM_transfer_model):
                 negative log likelihood after an expectation step.
     """
     def __init__(self, lvq_model, regul = 1E-5, error_delta = 1E-5, max_it = 50):
-        super(LVQ_transfer_model, self).__init__(lgmm.from_lvq(lvq_model), regul, error_delta, max_it)
+        super(LVQ_transfer_model, self).__init__(lgmm.slgmm_from_lvq(lvq_model), regul, error_delta, max_it)
         self.lvq_model = lvq_model
 
 
