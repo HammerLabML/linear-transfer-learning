@@ -97,9 +97,12 @@ p(\vec x, y) = \sum_{k=1}^K p(\vec x|k) \cdot P(y|k) \cdot P(k)
 
 Note that $`p(\vec x|k)`$ is a [multivariate Gaussian probability density][5]
 with parameters for the mean $`\vec \mu_k`$ and the precision matrix
-$`\Lambda_k`$. Also note that his model is very similar to a standard
-[Gaussian mixture model][6] and that many of the GMM properties translate
-directly to lGMMs.
+$`\Lambda_k`$. Also note that this model is a proper generalization over
+standard [Gaussian mixture models][6] and that many of the GMM properties
+translate directly to lGMMs. More precisely, we obtain a standard GMM by setting
+the label distribution $`P(y|k)`$ to a uniform distribution and leaving it
+unchanged during training. Alternatively, we also obtain a standard GMM by
+assigning the same label to all data points.
 
 Also note that lGMMs generalize over learning vector quantization models if we
 apply a scaling trick to the precision matrices (for more details on this,
@@ -145,7 +148,7 @@ wherever necessary) and then iteratively perform the following two steps:
 	$`\lambda`$ is a (small) regularization constant, and $`I`$ is the identity
 	matrix. Due to this closed form solution, the `SLGMM_transfer_model` and
 	the `LVQ_model` are much faster to train compared to the
-	`LGMM_transfer_model`.
+	`LGMM_transfer_model` and the `Local_LVQ_transfer_model`.
 
 For more detailed background, please refer to [our paper][1].
 

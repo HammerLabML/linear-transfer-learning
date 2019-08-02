@@ -35,6 +35,13 @@ __email__  = 'bpaassen@techfak.uni-bielefeld.de'
 class SLGMM(BaseEstimator, ClassifierMixin):
     """ A labelled Gaussian mixture model with shared precision matrices.
 
+    Note that this is _not_ the same as a standard Gaussian mixture model,
+    because labelled Gaussian mixture models support a label distribution
+    for each component (also refer to the _P_Y) parameter. As such, this
+    model is also _not_ equivalent to training a separate GMM for each label
+    because this model can cope with 'fuzzy' assignments of components to
+    multiple labels.
+
     Attributes:
     K:          The number of Gaussian components. It is also possible to
                 input a string her to specify a number of Gaussian components
