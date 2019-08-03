@@ -33,6 +33,15 @@ transformation generalizes across classes.
 
 If you intend to use this library in academic work, please cite [our paper][1].
 
+## Installation
+
+This package is available on `pypi` as `em_transfer_learning`. You can install
+it via
+
+```
+pip install --user em_transfer_learning
+```
+
 ## QuickStart Guide
 
 For a quick start we recommend to take a look at the demo in the notebook
@@ -40,13 +49,13 @@ For a quick start we recommend to take a look at the demo in the notebook
 on example data. For the actual transfer learning, we recommend to initialize
 one of the following models, depending on your source space model:
 
-1. `transfer-learning.LGMM_transfer_model` : If you have a full labelled
+1. `em_transfer_learning.transfer_learning.LGMM_transfer_model` : If you have a full labelled
    Gaussian mixture model.
-2. `transfer-learning.SLGMM_transfer_model` : If you have a labelled Gaussian
+2. `em_transfer_learning.transfer_learning.SLGMM_transfer_model` : If you have a labelled Gaussian
    mixture model with shared precision matrices.
-3. `transfer-learning.Local_LVQ_transfer_model` : If you have a learning vector
+3. `em_transfer_learning.transfer_learning.Local_LVQ_transfer_model` : If you have a learning vector
    quantization model with individual metric learning matrices.
-4. `transfer-learning.LVQ_transfer_model` : If you have a learning vector
+4. `em_transfer_learning.transfer_learning.LVQ_transfer_model` : If you have a learning vector
    quantization model with shared metric learning matrix or no metric learning
    at all.
 
@@ -158,11 +167,11 @@ This library contains the following files.
 
 * `demo.ipynb` : A demo script illustrating how to use this library.
 * `LICENSE` : A copy of the GPLv3 license.
-* `lgmm.py` : A file to train labelled Gaussian mixture models with or without
+* `em_transfer_learning/lgmm.py` : A file to train labelled Gaussian mixture models with or without
   shared precision matrices.
+* `em_transfer_learning/transfer_learning.py` : The actual transfer learning models.
 * `lgmm_test.py` : A set of unit tests for `lgmm.py`.
 * `README.md` : This file.
-* `transfer_learning.py` : The actual transfer learning models.
 * `transfer_learning_test.py` : A set of unit tests for `transfer_learning.py`.
 
 ## Licensing
@@ -171,8 +180,8 @@ This library is licensed under the [GNU General Public License Version 3][7].
 
 ## Dependencies
 
-This library depends on [NumPy][3] for matrix operations and [SciPy][4] for
-optimization.
+This library depends on [NumPy][3] for matrix operations, on [scikit-learn][2]
+for the base interfaces and on [SciPy][4] for optimization.
 
 ## Literature
 
