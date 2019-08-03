@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from sklearn.base import BaseEstimator
 from scipy import optimize
-import lgmm
+import em_transfer_learning.lgmm as lgmm
 
 __author__ = 'Benjamin Paaßen'
 __copyright__ = 'Copyright 2019, Benjamin Paaßen'

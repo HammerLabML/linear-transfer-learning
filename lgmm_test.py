@@ -6,7 +6,7 @@ from sklearn_lvq.grlvq import GrlvqModel
 from sklearn_lvq.gmlvq import GmlvqModel
 from sklearn_lvq.grmlvq import GrmlvqModel
 from sklearn_lvq.lgmlvq import LgmlvqModel
-import lgmm
+import em_transfer_learning.lgmm as lgmm
 
 class TestLGMM(unittest.TestCase):
 

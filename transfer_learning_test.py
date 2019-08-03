@@ -5,8 +5,8 @@ from sklearn_lvq.grlvq import GrlvqModel
 from sklearn_lvq.gmlvq import GmlvqModel
 from sklearn_lvq.grmlvq import GrmlvqModel
 from sklearn_lvq.lgmlvq import LgmlvqModel
-import lgmm
-import transfer_learning
+import em_transfer_learning.lgmm as lgmm
+import em_transfer_learning.transfer_learning as transfer_learning
 
 class TestTransferLearning(unittest.TestCase):
 
