@@ -39,7 +39,7 @@ This package is available on `pypi` as `em_transfer_learning`. You can install
 it via
 
 ```
-pip install --user em_transfer_learning
+pip install em_transfer_learning
 ```
 
 ## QuickStart Guide
